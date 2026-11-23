@@ -1,0 +1,18 @@
+const { scanProject } = require('../lib/scan'); const U = require('../lib/urls'); const fs = require('fs'); const path = require('path'); const os = require('os');
+const proj = { id: 'testbp', path: path.join(__dirname, 'tmp', 'bp') };
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dp-'));
+const scan = scanProject(proj.path); const r = U.find(scan);
+console.log('server port:', r.serverPort, '(' + r.serverName + ')');
+for (const g of r.items) console.log(' ', g.state.padEnd(5), (g.mode || '-').padEnd(7), g.rel, g.key, '|', g.prod, '->', g.local);
+const snap = (f) => fs.readFileSync(f, 'utf8');
+const files = [...new Set(r.items.map((g) => g.file))]; const before = Object.fromEntries(files.map((f) => [f, snap(f)]));
+const ids = r.items.filter((g) => g.state === 'prod' && g.local).map((g) => g.id);
+const res = U.toLocal(dir, proj, { ...r, parts: scan.parts }, ids);
+console.log('\nto LOCAL:', res);
+const ax = path.join(proj.path, 'platform/src/modules/shared/axios/authAxios.tsx');
+console.log(snap(ax).split(/\r?\n/).slice(9, 21).join('\n'));
+console.log('hook installed:', fs.existsSync(path.join(proj.path, '.git/hooks/pre-commit')), '| status local:', !!U.status(dir, proj.id));
+const back = U.toProd(dir, proj);
+console.log('\nback to PROD:', back);
+const same = files.every((f) => snap(f) === before[f]);
+console.log('every file byte-identical to the original:', same, '| hook removed:', !fs.existsSync(path.join(proj.path, '.git/hooks/pre-commit')));

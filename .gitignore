@@ -1,0 +1,5 @@
+node_modules/
+build/
+installer_output/
+test/tmp/
+*.log
